@@ -1,0 +1,295 @@
+import { useState } from 'react';
+import { z } from 'zod';
+import { useAuth } from '@/hooks/useAuth';
+import { expensesAPI } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { toast } from 'sonner';
+import { Minus, AlertCircle } from 'lucide-react';
+
+type ExpenseCategory = 'food' | 'transport' | 'utilities' | 'rent' | 'healthcare' | 'education' | 'entertainment' | 'shopping' | 'insurance' | 'subscriptions' | 'travel' | 'personal_care' | 'household' | 'gifts' | 'investments' | 'taxes' | 'other';
+
+const expenseCategories: { value: ExpenseCategory; label: string }[] = [
+  { value: 'food', label: '🍔 Food & Dining' },
+  { value: 'transport', label: '🚗 Transport' },
+  { value: 'utilities', label: '💡 Utilities' },
+  { value: 'rent', label: '🏠 Rent' },
+  { value: 'healthcare', label: '🏥 Healthcare' },
+  { value: 'education', label: '📚 Education' },
+  { value: 'entertainment', label: '🎬 Entertainment' },
+  { value: 'shopping', label: '🛍️ Shopping' },
+  { value: 'insurance', label: '🛡️ Insurance' },
+  { value: 'subscriptions', label: '📱 Subscriptions' },
+  { value: 'travel', label: '✈️ Travel' },
+  { value: 'personal_care', label: '💅 Personal Care' },
+  { value: 'household', label: '🏡 Household' },
+  { value: 'gifts', label: '🎁 Gifts' },
+  { value: 'investments', label: '📈 Investments' },
+  { value: 'taxes', label: '📋 Taxes' },
+  { value: 'other', label: '📝 Other' },
+];
+
+const paymentMethods = [
+  { value: 'cash', label: 'Cash' },
+  { value: 'credit_card', label: 'Credit Card' },
+  { value: 'debit_card', label: 'Debit Card' },
+  { value: 'upi', label: 'UPI' },
+  { value: 'net_banking', label: 'Net Banking' },
+  { value: 'wallet', label: 'Digital Wallet' },
+];
+
+const recurringOptions = [
+  { value: 'weekly', label: 'Weekly' },
+  { value: 'biweekly', label: 'Bi-weekly' },
+  { value: 'monthly', label: 'Monthly' },
+  { value: 'quarterly', label: 'Quarterly' },
+  { value: 'yearly', label: 'Yearly' },
+];
+
+const expenseSchema = z.object({
+  amount: z.number().positive('Amount must be greater than 0'),
+  category: z.string().min(1, 'Please select a category'),
+  merchant: z.string().trim().min(1, 'Merchant/vendor is required').max(100),
+  description: z.string().trim().max(500).optional(),
+  date: z.string().min(1, 'Date is required'),
+  paymentMethod: z.string().optional(),
+  isRecurring: z.boolean(),
+  recurringFrequency: z.string().optional(),
+});
+
+interface ExpenseFormProps {
+  onSuccess: () => void;
+}
+
+export function ExpenseForm({ onSuccess }: ExpenseFormProps) {
+  const { user } = useAuth();
+  const [isLoading, setIsLoading] = useState(false);
+  const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const [amount, setAmount] = useState('');
+  const [category, setCategory] = useState<ExpenseCategory>('food');
+  const [merchant, setMerchant] = useState('');
+  const [description, setDescription] = useState('');
+  const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
+  const [paymentMethod, setPaymentMethod] = useState('upi');
+  const [isRecurring, setIsRecurring] = useState(false);
+  const [recurringFrequency, setRecurringFrequency] = useState('monthly');
+
+  const resetForm = () => {
+    setAmount('');
+    setCategory('food');
+    setMerchant('');
+    setDescription('');
+    setDate(new Date().toISOString().split('T')[0]);
+    setPaymentMethod('upi');
+    setIsRecurring(false);
+    setRecurringFrequency('monthly');
+    setErrors({});
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setErrors({});
+    setIsLoading(true);
+
+    try {
+      const data = expenseSchema.parse({
+        amount: parseFloat(amount),
+        category,
+        merchant,
+        description: description || undefined,
+        date,
+        paymentMethod,
+        isRecurring,
+        recurringFrequency: isRecurring ? recurringFrequency : undefined,
+      });
+
+      try {
+        await expensesAPI.create({
+          amount: data.amount,
+          category: data.category,
+          merchant: data.merchant,
+          description: data.description || null,
+          date: data.date,
+          payment_method: data.paymentMethod || null,
+          is_recurring: data.isRecurring,
+          recurring_frequency: data.recurringFrequency || null,
+        });
+
+        toast.success('Expense added successfully!');
+        resetForm();
+        onSuccess();
+      } catch (error) {
+        toast.error('Failed to add expense');
+      }
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        const fieldErrors: Record<string, string> = {};
+        error.errors.forEach((err) => {
+          if (err.path[0]) {
+            fieldErrors[err.path[0] as string] = err.message;
+          }
+        });
+        setErrors(fieldErrors);
+      }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+        <div className="space-y-2">
+          <Label htmlFor="amount">Amount (₹)</Label>
+          <Input
+            id="amount"
+            type="number"
+            step="0.01"
+            min="0"
+            placeholder="500"
+            value={amount}
+            onChange={(e) => setAmount(e.target.value)}
+          />
+          {errors.amount && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.amount}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="category">Category</Label>
+          <Select value={category} onValueChange={(val) => setCategory(val as ExpenseCategory)}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select category" />
+            </SelectTrigger>
+            <SelectContent>
+              {expenseCategories.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          {errors.category && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.category}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="merchant">Merchant / Vendor</Label>
+          <Input
+            id="merchant"
+            type="text"
+            placeholder="e.g., Amazon, Zomato, Uber"
+            value={merchant}
+            onChange={(e) => setMerchant(e.target.value)}
+          />
+          {errors.merchant && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.merchant}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="date">Date</Label>
+          <Input
+            id="date"
+            type="date"
+            value={date}
+            onChange={(e) => setDate(e.target.value)}
+          />
+          {errors.date && (
+            <p className="text-sm text-destructive flex items-center gap-1">
+              <AlertCircle className="w-3 h-3" />
+              {errors.date}
+            </p>
+          )}
+        </div>
+
+        <div className="space-y-2 md:col-span-2">
+          <Label htmlFor="payment">Payment Method</Label>
+          <Select value={paymentMethod} onValueChange={setPaymentMethod}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select payment method" />
+            </SelectTrigger>
+            <SelectContent>
+              {paymentMethods.map((method) => (
+                <SelectItem key={method.value} value={method.value}>
+                  {method.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      </div>
+
+      <div className="space-y-2">
+        <Label htmlFor="description">Description (Optional)</Label>
+        <Textarea
+          id="description"
+          placeholder="Add any notes about this expense..."
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          rows={3}
+        />
+      </div>
+
+      <div className="flex items-center justify-between p-4 rounded-lg bg-muted/50">
+        <div>
+          <Label htmlFor="recurring" className="text-base font-medium">
+            Recurring Expense
+          </Label>
+          <p className="text-sm text-muted-foreground">
+            Is this a regular expense?
+          </p>
+        </div>
+        <Switch
+          id="recurring"
+          checked={isRecurring}
+          onCheckedChange={setIsRecurring}
+        />
+      </div>
+
+      {isRecurring && (
+        <div className="space-y-2 animate-fade-in">
+          <Label htmlFor="frequency">Recurring Frequency</Label>
+          <Select value={recurringFrequency} onValueChange={setRecurringFrequency}>
+            <SelectTrigger>
+              <SelectValue placeholder="Select frequency" />
+            </SelectTrigger>
+            <SelectContent>
+              {recurringOptions.map((opt) => (
+                <SelectItem key={opt.value} value={opt.value}>
+                  {opt.label}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <Button type="submit" variant="destructive" className="w-full" disabled={isLoading}>
+        <Minus className="w-4 h-4 mr-2" />
+        {isLoading ? 'Adding...' : 'Add Expense'}
+      </Button>
+    </form>
+  );
+}
