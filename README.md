@@ -2,44 +2,6 @@
 
 A comprehensive full-stack financial management application built with React, TypeScript, and Express.js. Manage your assets, investments, income, expenses, goals, and more all in one place.
 
-## 📸 Screenshots
-
-### Dashboard Overview
-![Dashboard Overview](https://via.placeholder.com/1000x600?text=Dashboard+-+Financial+Overview)
-*Main dashboard showing comprehensive financial overview and quick actions*
-
-### Asset Management & Allocation
-![Asset Allocation Chart](https://via.placeholder.com/1000x600?text=Asset+Allocation+Chart)
-*Track and visualize your asset allocation across different categories*
-
-### Investment Portfolio Analysis
-![Investment Portfolio](https://via.placeholder.com/1000x600?text=Investment+Portfolio+Analysis)
-*Monitor your investments with detailed returns analysis and performance tracking*
-
-### Expense Tracking & Analytics
-![Expense Tracking](https://via.placeholder.com/1000x600?text=Expense+Tracking+by+Category)
-*Categorize and analyze your expenses with visual breakdowns*
-
-### Income Management
-![Income Overview](https://via.placeholder.com/1000x600?text=Income+Management)
-*Track multiple income sources and monitor cash flow*
-
-### Financial Calculators
-![Calculators Suite](https://via.placeholder.com/1000x600?text=Financial+Calculators)
-*Access built-in calculators for SIP, EMI, Lumpsum, and Fixed Deposits*
-
-### Net Worth Tracking
-![Net Worth Dashboard](https://via.placeholder.com/1000x600?text=Net+Worth+Tracking)
-*Real-time net worth calculation and historical progression*
-
-### Financial Goals
-![Financial Goals](https://via.placeholder.com/1000x600?text=Financial+Goals+Tracking)
-*Set, monitor, and achieve your financial goals*
-
-### Reports & Analytics
-![Reports & Analytics](https://via.placeholder.com/1000x600?text=Reports+and+Analytics)
-*Generate comprehensive financial reports and insights*
-
 ## ✨ Features
 
 - 💰 **Asset Management** - Track properties, vehicles, and other assets
