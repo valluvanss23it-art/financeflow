@@ -3,11 +3,23 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/db');
+const { setupAutomaticNewsUpdates, addSampleNews } = require('./services/newsService');
 
-// Connect to MongoDB
-connectDB();
+// Connect to MongoDB Atlas
+if (process.env.MONGODB_URI) {
+  connectDB();
+} else {
+  console.error('MONGODB_URI not configured. Please set it in .env file');
+  process.exit(1);
+}
 
 const app = express();
+
+// Add request logging FIRST
+app.use((req, res, next) => {
+  console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+  next();
+});
 
 // Middleware
 app.use(cors());
@@ -28,23 +40,40 @@ app.use(express.static(distPath, {
   }
 }));
 
-// Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/profile', require('./routes/profile'));
-app.use('/api/income', require('./routes/income'));
-app.use('/api/expenses', require('./routes/expenses'));
-app.use('/api/goals', require('./routes/goals'));
-app.use('/api/assets', require('./routes/assets'));
-app.use('/api/liabilities', require('./routes/liabilities'));
-app.use('/api/insurance', require('./routes/insurance'));
-app.use('/api/investments', require('./routes/investments'));
-app.use('/api/savings', require('./routes/savings'));
-app.use('/api/tax', require('./routes/tax'));
+// Routes - wrapped in try-catch
+try {
+  app.use('/api/auth', require('./routes/auth'));
+  app.use('/api/profile', require('./routes/profile'));
+  app.use('/api/transactions', require('./routes/transactions'));
+  app.use('/api/income', require('./routes/income'));
+  app.use('/api/expenses', require('./routes/expenses'));
+  app.use('/api/goals', require('./routes/goals'));
+  app.use('/api/assets', require('./routes/assets'));
+  app.use('/api/liabilities', require('./routes/liabilities'));
+  app.use('/api/insurance', require('./routes/insurance'));
+  app.use('/api/investments', require('./routes/investments'));
+  app.use('/api/savings', require('./routes/savings'));
+  app.use('/api/tax', require('./routes/tax'));
+  app.use('/api/news', require('./routes/news'));
+  console.log('All routes loaded successfully');
+} catch (err) {
+  console.error('Error loading routes:', err.message || err);
+  console.error(err.stack);
+}
 
 // Health check route
 app.get('/api/health', (req, res) => {
   res.json({ status: 'ok', message: 'Server is running' });
 });
+
+// Setup automatic news updates
+const newsUpdateInterval = parseInt(process.env.NEWS_UPDATE_INTERVAL || '60'); // minutes
+setupAutomaticNewsUpdates(newsUpdateInterval);
+
+// Add sample news in development mode
+if (process.env.NODE_ENV === 'development') {
+  addSampleNews().catch(err => console.error('Error adding sample news:', err));
+}
 
 // Error handling middleware (before catch-all route)
 app.use((err, req, res, next) => {
@@ -67,6 +96,44 @@ app.get('*', (req, res) => {
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
-  console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
-});
+// Initialize database schema and start server
+async function startServer() {
+  try {
+    console.log('Using MongoDB Atlas database');
+    
+    // Start the server
+    const server = app.listen(PORT, '0.0.0.0', () => {
+      console.log(`Server running in ${process.env.NODE_ENV} mode on port ${PORT}`);
+      console.log(`Backend server is ready to accept connections`);
+    });
+    
+    // Handle server errors
+    server.on('error', (err) => {
+      console.error('Server error:', err.message || err);
+      if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use`);
+      }
+      process.exit(1);
+    });
+    
+    // Keep process alive
+    console.log('Server initialization complete');
+    
+    // Handle uncaught exceptions
+    process.on('uncaughtException', (err) => {
+      console.error('Uncaught Exception:', err);
+      process.exit(1);
+    });
+    
+    // Handle unhandled promise rejections
+    process.on('unhandledRejection', (reason, promise) => {
+      console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+    });
+  } catch (err) {
+    console.error('Failed to start server:', err.message || err);
+    console.error(err.stack);
+    process.exit(1);
+  }
+}
+
+startServer();

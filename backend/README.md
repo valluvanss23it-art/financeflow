@@ -40,6 +40,23 @@ JWT_EXPIRE=7d
 NODE_ENV=development
 ```
 
+If you prefer MySQL, add these variables instead (or alongside):
+
+```env
+# MySQL settings
+MYSQL_HOST=localhost
+MYSQL_PORT=3306
+MYSQL_USER=root
+MYSQL_PASSWORD=your_mysql_password
+MYSQL_DATABASE=financial_compass
+```
+
+To enable MySQL for the backend instead of MongoDB, set this in `backend/.env`:
+
+```env
+USE_MYSQL=true
+```
+
 **Important**: Change `JWT_SECRET` to a secure random string in production!
 
 ### 3. Install and Start MongoDB
@@ -63,6 +80,31 @@ NODE_ENV=development
    ```
    MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/financial-compass?retryWrites=true&w=majority
    ```
+
+  ### MySQL (optional)
+
+  If you'd rather use MySQL, ensure you have a MySQL server running and update the `.env` with the `MYSQL_` variables shown above. The project includes a MySQL connection helper at `backend/config/mysql.js` which uses `mysql2`.
+
+  #### Install MySQL
+  1. Install MySQL Server for your OS: https://dev.mysql.com/downloads/
+  2. Start the MySQL service (platform-specific):
+    ```bash
+    # Windows (PowerShell)
+    net start MySQL
+
+    # macOS (Homebrew)
+    brew services start mysql
+
+    # Linux (systemd)
+    sudo systemctl start mysql
+    ```
+
+  #### Create the database
+  ```sql
+  CREATE DATABASE IF NOT EXISTS financial_compass;
+  ```
+
+  Note: This repository still contains Mongoose models and MongoDB-focused routes. Switching fully to MySQL will require replacing models and queries; the `mysql.js` helper provides a starting point for establishing a connection.
 
 ### 4. Start the Backend Server
 
@@ -127,6 +169,15 @@ All require authentication (Bearer token in Authorization header)
 - **Savings**: `/api/savings` (GET, POST, PUT, DELETE)
 - **Tax**: `/api/tax` (GET, POST, PUT, DELETE)
 
+### News Endpoints (Auto-updating)
+- `GET /api/news` - Get all news articles (with filters & pagination)
+- `GET /api/news/featured` - Get featured latest news
+- `GET /api/news/categories` - Get available news categories
+- `GET /api/news/:id` - Get specific news article
+- `POST /api/news` - Create new news article (requires authentication)
+- `POST /api/news/refresh` - Manually trigger news refresh (requires authentication)
+- `DELETE /api/news/:id` - Delete news article (requires authentication)
+
 ## Project Structure
 
 ```
@@ -145,7 +196,8 @@ backend/
 │   ├── Insurance.js       # Insurance model
 │   ├── Investment.js      # Investment model
 │   ├── Savings.js         # Savings model
-│   └── Tax.js             # Tax model
+│   ├── Tax.js             # Tax model
+│   └── News.js            # News model
 ├── routes/
 │   ├── auth.js            # Authentication routes
 │   ├── profile.js         # Profile routes
@@ -157,10 +209,14 @@ backend/
 │   ├── insurance.js       # Insurance routes
 │   ├── investments.js     # Investments routes
 │   ├── savings.js         # Savings routes
-│   └── tax.js             # Tax routes
+│   ├── tax.js             # Tax routes
+│   └── news.js            # News routes
+├── services/
+│   └── newsService.js     # News fetching and auto-update service
 ├── .env.example           # Environment variables template
 ├── .gitignore
 ├── package.json
+└── server.js              # Express server setup
 └── server.js              # Express server setup
 ```
 
@@ -187,6 +243,48 @@ Get income (replace TOKEN with your JWT):
 curl http://localhost:5000/api/income \
   -H "Authorization: Bearer YOUR_TOKEN_HERE"
 ```
+
+Get news:
+```bash
+curl http://localhost:5000/api/news
+```
+
+Get featured news:
+```bash
+curl http://localhost:5000/api/news/featured
+```
+
+## Automatic News Updates
+
+The application automatically fetches financial news from NewsAPI.org and updates the database at regular intervals. To enable this feature:
+
+### Setup Instructions
+
+1. **Get a NewsAPI Key**
+   - Visit https://newsapi.org
+   - Sign up for a free account
+   - Copy your API key
+
+2. **Configure Environment Variables**
+   Add to your `.env` file:
+   ```env
+   NEWS_API_KEY=your_api_key_here
+   NEWS_UPDATE_INTERVAL=60  # Update interval in minutes (default: 60)
+   ```
+
+3. **Automatic Updates**
+   - News updates run automatically when the server starts
+   - Subsequent updates occur at the interval specified (default: every 60 minutes)
+   - In development mode, sample news articles are added automatically
+   - Old articles (> 30 days) are automatically deleted from the database
+
+### News Categories
+- `market` - Stock market and general market news
+- `economy` - Economic news and reports
+- `stocks` - Specific stock news
+- `crypto` - Cryptocurrency and blockchain news
+- `commodities` - Commodity prices and news
+- `general` - General financial news
 
 ## Troubleshooting
 

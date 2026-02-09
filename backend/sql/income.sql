@@ -1,0 +1,14 @@
+
+CREATE TABLE incomes1 (
+    id BIGINT PRIMARY KEY AUTO_INCREMENT,
+    user_id BIGINT NOT NULL,
+    source VARCHAR(255),
+    amount DECIMAL(12, 2) NOT NULL,
+    date DATE NOT NULL,
+    category VARCHAR(100),
+    description TEXT,
+    is_recurring BOOLEAN DEFAULT FALSE,
+    recurring_frequency VARCHAR(50),
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
+);
